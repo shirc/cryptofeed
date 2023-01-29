@@ -32,7 +32,7 @@ class BitDotCom(Feed):
     ]
     rest_endpoints = [
         RestEndpoint('https://spot-api.bit.com', instrument_filter=('TYPE', (SPOT,)), sandbox='https://betaspot-api.bitexch.dev', routes=Routes('/spot/v1/instruments', authentication='/spot/v1/ws/auth')),
-        RestEndpoint('https://api.bit.com', instrument_filter=('TYPE', (OPTION, FUTURES, PERPETUAL)), sandbox='https://betaapi.bitexch.dev', routes=Routes('/v1/instruments?currency={}&active=true', currencies='/v1/currencies', authentication='/v1/ws/auth'))
+        RestEndpoint('https://api.bit.com', instrument_filter=('TYPE', (OPTION, FUTURES, PERPETUAL)), sandbox='https://betaapi.bitexch.dev', routes=Routes('/linear/v1/instruments?currency=USD&active=true', authentication='/v1/ws/auth'))
     ]
 
     websocket_channels = {
@@ -171,6 +171,7 @@ class BitDotCom(Feed):
                 'type': 'subscribe',
                 'channels': [chan],
                 'instruments' if stype in {PERPETUAL, FUTURES, OPTION} else 'pairs': symbols,
+                'interval': '100ms' if chan == 'depth' else 'raw'
             }
             if self.is_authenticated_channel(self.exchange_channel_to_std(chan)):
                 msg['token'] = self._auth_token
@@ -246,7 +247,7 @@ class BitDotCom(Feed):
         '''
         if data['data']['type'] == 'update':
             pair = self.exchange_symbol_to_std_symbol(data['data'].get('instrument_id') or data['data'].get('pair'))
-            if data['data']['sequence'] != self._sequence_no[pair] + 1:
+            if data['data']['prev_sequence'] != self._sequence_no[pair]:
                 raise MissingSequenceNumber("Missing sequence number, restarting")
 
             self._sequence_no[pair] = data['data']['sequence']
